@@ -1,0 +1,233 @@
+heat_template_version: 2013-05-23
+
+description: |
+  Test template using all resources supported on the Rackspace Public Cloud.
+  This template is for demonstration purposes only and does not represent
+  a particularly useful architecture.
+
+parameters:
+
+  domain_name:
+    type: string
+    description: DNS Domain name
+
+  keypair_name:
+    type: string
+    description: Name of the Nova keypair to create and use for server access
+
+  db_pass:
+    type: string
+    hidden: true
+    description: Database access password
+    default: secrete
+
+resources:
+
+  access_key:
+    type: OS::Nova::KeyPair
+    properties:
+      name: { get_param: keypair_name }
+      save_private_key: true
+
+  priv_network:
+    type: Rackspace::Cloud::Network
+    properties:
+      label: kitchen_sink
+      cidr: 192.168.0.0/24
+
+  a_random_string:
+    type: OS::Heat::RandomString
+    properties:
+      length: 8
+
+  devops_server:
+    type: OS::Nova::Server
+    properties:
+      name: kitchen_sink_ops01
+      image: Ubuntu 13.10 (Saucy Salamander)
+      flavor: 4 GB Performance
+      key_name: { get_resource: access_key }
+      networks:
+      - uuid: "00000000-0000-0000-0000-000000000000"
+      - uuid: "11111111-1111-1111-1111-111111111111"
+      - uuid: { get_resource: priv_network }
+
+  devops_volume:
+    type: OS::Cinder::Volume
+    properties:
+      name: kitchen_sink_devops_vol
+      size: 100
+      description: Created from the kitchen_sink test Heat template
+
+  attach_devops_vol:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      instance_uuid: { get_resource: devops_server }
+      volume_id: { get_resource: devops_volume }     
+
+  api_servers:
+    type: Rackspace::AutoScale::Group
+    properties:
+      groupConfiguration:
+        name: kitchen_sink_api_asgroup
+        maxEntities: 8
+        minEntities: 2
+        cooldown: 120
+      launchConfiguration:
+        type: launch_server
+        args:
+          loadBalancers:
+          - loadBalancerId: { get_resource: api_loadbalancer }
+            port: 80
+          server:
+            name: kitchen_sink_api
+            flavorRef: performance1-1
+            imageRef: df27d481-63a5-40ca-8920-3d132ed643d9
+            key_name: { get_resource: access_key }
+            networks:
+            # Rackspace ServiceNet
+            - uuid: "11111111-1111-1111-1111-111111111111"
+            - uuid: { get_resource: priv_network }
+
+  api_scale_up_policy:
+    type: Rackspace::AutoScale::ScalingPolicy
+    properties:
+      group: { get_resource: api_servers }
+      name: Scale up api servers
+      change: 1
+      cooldown: 600
+      type: webhook
+
+  api_scale_up_webhook:
+    type: Rackspace::AutoScale::WebHook
+    properties:
+      name: triggerApiScaleUp
+      policy: { get_resource: api_scale_up_policy }
+
+  api_scale_down_policy:
+    type: Rackspace::AutoScale::ScalingPolicy
+    properties:
+      group: { get_resource: api_servers }
+      name: Scale down api servers
+      change: -1
+      cooldown: 600
+      type: webhook
+
+  api_scale_down_webhook:
+    type: Rackspace::AutoScale::WebHook
+    properties:
+      name: triggerApiScaleUp
+      policy: { get_resource: api_scale_down_policy }
+
+  api_loadbalancer:
+    type: Rackspace::Cloud::LoadBalancer
+    properties:
+      name: kitchen_sink_api_lb
+      protocol: HTTP
+      port: 80
+      algorithm: ROUND_ROBIN
+      nodes:
+      - addresses: { get_attr: [ engine_nodes, privateIPv4 ] }
+        port: 80
+        condition: ENABLED
+      virtualIps:
+      - type: PUBLIC
+        ipVersion: IPV4
+
+  service_domain:
+    type: Rackspace::Cloud::DNS
+    properties:
+      name: { get_param: domain_name }
+      emailAddress:
+        str_replace:
+          template: "admin@%domain%"
+          params:
+            "%domain%": { get_param: domain_name }
+      records:
+      - name: { get_param: domain_name }
+        type: A
+        data: { get_attr: [ api_loadbalancer, PublicIp ] }
+        
+  engine_nodes:
+    type: OS::Heat::ResourceGroup
+    depends_on: service_db
+    properties:
+      count: 2
+      resource_def:
+        type: Rackspace::Cloud::Server
+        properties:
+          name: kitchen_sink_engine
+          image: Ubuntu 13.10 (Saucy Salamander)
+          flavor: 8 GB Performance
+          key_name: { get_resource: access_key }
+          networks:
+          - uuid: { get_resource: priv_network }
+          # Rackspace ServiceNet
+          - uuid: "11111111-1111-1111-1111-111111111111"
+
+  service_db:
+    type: OS::Trove::Instance
+    properties:
+      name: kitchen_sink_db
+      flavor: 1GB Instance
+      size: 10
+      databases:
+      - name: kitchen_sink_data
+      users:
+      - name: kitchen_sink
+        password: { get_param: db_pass }
+        databases: [ kitchen_sink_data ]
+
+outputs:
+
+  "Private Network ID":
+    value: { get_resource: priv_network }
+    description: Private Network ID
+
+  "Random String":
+    value: { get_attr: [ a_random_string, value ] }
+    description: Random String
+
+  "Dev Ops Server ID":
+    value: { get_resource: devops_server }
+    description: Dev Ops Server ID
+
+  "Dev Ops Volume ID":
+    value: { get_resource: devops_volume }
+    description: Dev Ops Volume ID
+
+  "API servers auto scale group ID":
+    value: { get_resource: api_servers }
+    description: API servers auto scale group ID
+
+  "Scale UP API servers webhook":
+    value: { get_attr: [ api_scale_up_webhook, executeUrl ] }
+    description: Scale UP API servers webhook
+
+  "Scale DOWN API servers webhook":
+    value: { get_attr: [ api_scale_down_webhook, executeUrl ] }
+    description: Scale DOWN API servers webhook
+
+  "Load Balancer ID":
+    value: { get_resource: api_loadbalancer }
+    description: Load Balancer ID
+
+  "Load Balancer IP":
+    value: { get_attr: [ api_loadbalancer, PublicIp ] }
+    description: Load Balancer IP
+
+  "DNS Domain ID":
+    value: { get_resource: service_domain }
+    description: DNS Domain ID
+
+  "Engine Node IDs":
+    value: { get_attr: [ engine_nodes, refs ] }
+    description: Engine Node IDs
+
+  "DB ID":
+    value: { get_resource: service_db }
+    description: Database instance ID
+
+  "Access Private Key":
+    value: { get_attr: [ access_key, private_key ] }
+    description: SSH access private key

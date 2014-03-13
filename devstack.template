@@ -20,13 +20,10 @@ parameters:
   image:
     type: string
     description: Server image id to use
-    default: Ubuntu 12.04 LTS (Precise Pangolin)
+    default: CentOS 6.5
     constraints:
     - allowed_values:
       - CentOS 6.5
-      - Red Hat Enterprise Linux 6.4
-      - Ubuntu 12.04 LTS (Precise Pangolin)
-      - Fedora 18 (Spherical Cow)
       description: must be a Devstack-supported distro
 
   server_name:

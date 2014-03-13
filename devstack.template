@@ -20,13 +20,10 @@ parameters:
   image:
     type: string
     description: Server image id to use
-    default: Ubuntu 12.04 LTS (Precise Pangolin)
+    default: CentOS 6.5
     constraints:
     - allowed_values:
       - CentOS 6.5
-      - Red Hat Enterprise Linux 6.4
-      - Ubuntu 12.04 LTS (Precise Pangolin)
-      - Fedora 18 (Spherical Cow)
       description: must be a Devstack-supported distro
 
   server_name:
@@ -178,6 +175,10 @@ resources:
             glance_create F18-i386-cfntools http://fedorapeople.org/groups/heat/prebuilt-jeos-images/F18-i386-cfntools.qcow2
             glance_create F18-x86_64-cfntools http://fedorapeople.org/groups/heat/prebuilt-jeos-images/F18-x86_64-cfntools.qcow2
             EOF
+
+            # Disable requiretty in /etc/sudoers
+            sed -i 's/\(Defaults.*requiretty\)/#\1/' /etc/sudoers
+
             chmod +x ~stack/install-devstack.sh
             sudo -u stack ~stack/install-devstack.sh
           params:

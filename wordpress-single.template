@@ -78,7 +78,7 @@ resources:
     type: "OS::Nova::Server"
     properties:
       flavor: { get_param: flavor }
-      image: CentOS 6.5
+      image: "4b14a92e-84c8-4770-9245-91ecb8501cc2"  # CentOS 6.5
       name: { get_param: server_name }
       key_name: { get_param: key_name }
       config_drive: "true"

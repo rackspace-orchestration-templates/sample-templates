@@ -20,10 +20,11 @@ parameters:
   image:
     type: string
     description: Server image id to use
-    default: CentOS 6.5
+    default: 5b0d5891-f80c-412a-9b73-cc996de9d719
     constraints:
     - allowed_values:
-      - CentOS 6.5
+      - 4b14a92e-84c8-4770-9245-91ecb8501cc2  # CentOS 6.5
+      - 5b0d5891-f80c-412a-9b73-cc996de9d719  # Ubuntu 12.04 LTS (Precise Pangolin)
       description: must be a Devstack-supported distro
 
   server_name:
@@ -114,14 +115,27 @@ resources:
       user_data:
         str_replace:
           template: |
-            #!/bin/bash -x
+            #!/bin/bash -xv
+
+            # userdata script debug log
+            exec 1>/root/userdata.log 2>/root/userdata.log
+
+            # Wait until DNS resolution works
+            pings=0
+            while [[ $pings -lt 300 ]]; do
+              if ping -c1 mirror.rackspace.com; then
+                break
+              fi
+              sleep 1
+              ((pings++))
+            done
 
             # Install requirements
             packages="git emacs nmap"
-            if [[ "%image%" == "Ubuntu 12.04 LTS (Precise Pangolin)" ]]; then
-                apt-get install -y $packages
+            if apt-get update; then
+              apt-get install -y $packages
             else
-                yum -y install $packages
+              yum -y install $packages
             fi
 
             # Configure and install Devstack
@@ -129,6 +143,7 @@ resources:
             useradd -g stack -s /bin/bash -d /opt/stack -m stack
             echo "stack ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
+            # Create the devstack install script
             cat >~stack/install-devstack.sh<<EOF
             #!/bin/bash -x
 
@@ -136,19 +151,19 @@ resources:
             git clone git://github.com/openstack-dev/devstack.git -b "%devstack_branch%"
             cd devstack
             if [[ "%enable_heat%" == "true" ]]; then
-                echo "enable_service heat h-api h-api-cfn h-api-cw h-eng" > localrc
+              echo "enable_service heat h-api h-api-cfn h-api-cw h-eng" > localrc
             fi
             if [[ -n "%admin_pass%" ]]; then
-                echo "ADMIN_PASSWORD=%admin_pass%" >> localrc
+              echo "ADMIN_PASSWORD=%admin_pass%" >> localrc
             fi
             if [[ -n "%mysql_pass%" ]]; then
-                echo "MYSQL_PASSWORD=%mysql_pass%" >> localrc
+              echo "MYSQL_PASSWORD=%mysql_pass%" >> localrc
             fi
             if [[ -n "%rabbit_pass%" ]]; then
-                echo "RABBIT_PASSWORD=%rabbit_pass%" >> localrc
+              echo "RABBIT_PASSWORD=%rabbit_pass%" >> localrc
             fi
             if [[ -n "%service_pass%" ]]; then
-                echo "SERVICE_PASSWORD=%service_pass%" >> localrc
+              echo "SERVICE_PASSWORD=%service_pass%" >> localrc
             fi
             echo "SERVICE_TOKEN=$(openssl rand -hex 10)" >> localrc
 
@@ -176,11 +191,16 @@ resources:
             glance_create F18-x86_64-cfntools http://fedorapeople.org/groups/heat/prebuilt-jeos-images/F18-x86_64-cfntools.qcow2
             EOF
 
-            # Disable requiretty in /etc/sudoers
+            # Allow access to Horizon
+            iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+
+            # Disable requiretty in /etc/sudoers so sudo command below will work
             sed -i 's/\(Defaults.*requiretty\)/#\1/' /etc/sudoers
 
+            # Install devstack (takes ~15-20 minutes)
             chmod +x ~stack/install-devstack.sh
             sudo -u stack ~stack/install-devstack.sh
+
           params:
             "%mysql_pass%": { get_param: mysql_pass }
             "%admin_pass%": { get_param: admin_pass }
@@ -188,7 +208,6 @@ resources:
             "%service_pass%": { get_param: service_pass }
             "%enable_heat%": { get_param: enable_heat }
             "%key_name%": { get_param: key_name }
-            "%image%": { get_param: image }
             "%devstack_branch%": { get_param: devstack_branch }
 
 outputs:

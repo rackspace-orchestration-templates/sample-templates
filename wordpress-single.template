@@ -60,7 +60,6 @@ parameters:
       description: must begin with a letter and contain only alphanumeric characters.
 
   db_password:
-    default: admin
     hidden: true
     description: The WordPress database admin account password
     type: string

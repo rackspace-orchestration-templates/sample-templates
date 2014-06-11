@@ -162,9 +162,6 @@ resources:
             # Add the key to nova
             nova --os-username admin --os-password "%admin_pass%" --os-tenant-name admin --os-auth-url http://localhost:5000/v2.0/ keypair-add "%key_name%" --pub-key ~stack/.ssh/authorized_keys
 
-            # Heat-specific configs below
-            [[ "%enable_heat%" != "true" ]] && exit 0
-
             # Download convenience functions for Heat
             curl https://raw.github.com/jasondunsmore/heat-shell/master/functions > ~stack/.bash_profile
             source ~stack/.bash_profile
@@ -191,7 +188,6 @@ resources:
             "%admin_pass%": { get_param: admin_pass }
             "%rabbit_pass%": { get_param: rabbit_pass }
             "%service_pass%": { get_param: service_pass }
-            "%enable_heat%": { get_param: enable_heat }
             "%key_name%": { get_param: key_name }
             "%devstack_branch%": { get_param: devstack_branch }
 

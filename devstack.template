@@ -151,6 +151,13 @@ resources:
               echo "SERVICE_PASSWORD=%service_pass%" >> localrc
             fi
             echo "SERVICE_TOKEN=$(openssl rand -hex 10)" >> localrc
+            echo "disable_service n-net" >> localrc
+            echo "enable_service q-svc" >> localrc
+            echo "enable_service q-agt" >> localrc
+            echo "enable_service q-dhcp" >> localrc
+            echo "enable_service q-l3" >> localrc
+            echo "enable_service q-meta" >> localrc
+            echo "enable_service tempest" >> localrc
 
             sudo -i -u stack bash -c "~stack/devstack/stack.sh"
 

@@ -151,13 +151,8 @@ resources:
               echo "SERVICE_PASSWORD=%service_pass%" >> localrc
             fi
             echo "SERVICE_TOKEN=$(openssl rand -hex 10)" >> localrc
-            echo "disable_service n-net" >> localrc
-            echo "enable_service q-svc" >> localrc
-            echo "enable_service q-agt" >> localrc
-            echo "enable_service q-dhcp" >> localrc
-            echo "enable_service q-l3" >> localrc
-            echo "enable_service q-meta" >> localrc
-            echo "enable_service tempest" >> localrc
+            echo "SWIFT_HASH=$(openssl rand -hex 10)" >> localrc
+            echo "ENABLED_SERVICES=c-api,c-bak,c-sch,c-vol,ceilometer-acentral,ceilometer-acompute,ceilometer-alarm-evaluator,ceilometer-alarm-notifier,ceilometer-anotification,ceilometer-api,ceilometer-collector,cinder,dstat,g-api,g-reg,h-api,h-api-cfn,h-api-cw,h-eng,heat,horizon,key,mysql,n-api,n-cond,n-cpu,n-crt,n-obj,n-sch,q-agt,q-dhcp,q-fwaas,q-l3,q-lbaas,q-meta,q-metering,q-svc,q-vpn,quantum,rabbit,s-account,s-container,s-object,s-proxy,sahara,tempest,tr-api,tr-cond,tr-tmgr,trove" >> localrc
 
             sudo -i -u stack bash -c "~stack/devstack/stack.sh"
 

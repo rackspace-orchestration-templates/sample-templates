@@ -100,8 +100,6 @@ resources:
     properties:
       group: { get_resource: api_servers }
       name: Scale up api servers
-      metadata:
-        rax-heat: { get_param: "OS::stack_id" }
       change: 1
       cooldown: 600
       type: webhook
@@ -119,8 +117,6 @@ resources:
     properties:
       group: { get_resource: api_servers }
       name: Scale down api servers
-      metadata:
-        rax-heat: { get_param: "OS::stack_id" }
       change: -1
       cooldown: 600
       type: webhook
@@ -154,8 +150,6 @@ resources:
     type: Rackspace::Cloud::DNS
     properties:
       name: { get_param: domain_name }
-      metadata:
-        rax-heat: { get_param: "OS::stack_id" }
       emailAddress:
         str_replace:
           template: "admin@%domain%"
@@ -175,8 +169,6 @@ resources:
         type: Rackspace::Cloud::Server
         properties:
           name: kitchen_sink_engine
-          metadata:
-            rax-heat: { get_param: "OS::stack_id" }
           image: Ubuntu 13.10 (Saucy Salamander)
           flavor: 8 GB Performance
           key_name: { get_resource: access_key }
@@ -189,8 +181,6 @@ resources:
     type: OS::Trove::Instance
     properties:
       name: kitchen_sink_db
-      metadata:
-        rax-heat: { get_param: "OS::stack_id" }
       flavor: 1GB Instance
       size: 10
       databases:

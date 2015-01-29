@@ -25,6 +25,7 @@ parameters:
     - allowed_values:
       - 4b14a92e-84c8-4770-9245-91ecb8501cc2  # CentOS 6.5
       - 5b0d5891-f80c-412a-9b73-cc996de9d719  # Ubuntu 12.04 LTS (Precise Pangolin)
+      - Ubuntu 14.04 LTS (Trusty Tahr) (PVHVM)
       description: must be a Devstack-supported distro
 
   server_name:
